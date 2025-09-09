@@ -13,10 +13,10 @@ const App = () => {
   const [query, setQuery] = useState("spiderman");
   const [page, setPage] = useState(1);
 
-  const { data, isLoading, isError } = useQuery<MoviesResponse>({
+  const { data, isLoading, isError } = useQuery<MoviesResponse, Error>({
     queryKey: ["movies", query, page],
     queryFn: () => fetchMovies(query, page),
-    keepPreviousData: true,
+    placeholderData: (prev) => prev,
   });
 
   const handleSearch = (search: string) => {
@@ -33,9 +33,9 @@ const App = () => {
       {isLoading && <Loader />}
       {isError && <ErrorMessage message="Failed to load movies." />}
 
-      {data && <MovieGrid movies={data.results as Movie[]} />}
+      {data?.results && <MovieGrid movies={data.results as Movie[]} />}
 
-      {data && data.total_pages > 1 && (
+      {data?.total_pages && data.total_pages > 1 && (
         <ReactPaginate
           pageCount={data.total_pages}
           pageRangeDisplayed={5}
