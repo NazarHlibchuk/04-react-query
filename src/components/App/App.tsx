@@ -64,21 +64,6 @@ export default function App() {
           )}
 
           <MovieGrid movies={data.results} onSelect={setSelectedMovie} />
-
-          {/* Пагінація знизу */}
-          {data.total_pages > 1 && (
-            <ReactPaginate
-              pageCount={data.total_pages}
-              pageRangeDisplayed={5}
-              marginPagesDisplayed={1}
-              onPageChange={({ selected }) => setPage(selected + 1)}
-              forcePage={page - 1}
-              containerClassName={css.pagination}
-              activeClassName={css.active}
-              nextLabel="→"
-              previousLabel="←"
-            />
-          )}
         </>
       )}
 
