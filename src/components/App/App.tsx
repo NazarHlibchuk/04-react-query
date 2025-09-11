@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import ReactPaginate from "react-paginate";
 import toast, { Toaster } from "react-hot-toast";
@@ -20,16 +20,19 @@ export default function App() {
   const [page, setPage] = useState(1);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
 
-  const { data, isLoading, isError, isSuccess } = useQuery<FetchMoviesResponse>({
+  const { data, isLoading, isError, isSuccess } = useQuery<FetchMoviesResponse, Error>({
     queryKey: ["movies", query, page],
     queryFn: () => fetchMovies(query, page),
     enabled: !!query,
     placeholderData: (prev) => prev,
   });
 
-  if (isSuccess && data && data.results.length === 0) {
-    toast.error("No movies found for your request.");
-  }
+  // показуємо toast тільки один раз при новому успішному запиті
+  useEffect(() => {
+    if (isSuccess && data.results.length === 0) {
+      toast.error("No movies found for your request.");
+    }
+  }, [isSuccess, data]);
 
   return (
     <>
@@ -43,9 +46,26 @@ export default function App() {
       {isLoading && <Loader />}
       {isError && <ErrorMessage />}
 
-      {isSuccess && data && data.results.length > 0 && (
+      {isSuccess && data.results.length > 0 && (
         <>
+          {/* Пагінація зверху */}
+          {data.total_pages > 1 && (
+            <ReactPaginate
+              pageCount={data.total_pages}
+              pageRangeDisplayed={5}
+              marginPagesDisplayed={1}
+              onPageChange={({ selected }) => setPage(selected + 1)}
+              forcePage={page - 1}
+              containerClassName={css.pagination}
+              activeClassName={css.active}
+              nextLabel="→"
+              previousLabel="←"
+            />
+          )}
+
           <MovieGrid movies={data.results} onSelect={setSelectedMovie} />
+
+          {/* Пагінація знизу */}
           {data.total_pages > 1 && (
             <ReactPaginate
               pageCount={data.total_pages}
