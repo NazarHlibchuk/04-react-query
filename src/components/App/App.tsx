@@ -1,55 +1,85 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import ReactPaginate from "react-paginate";
-import { fetchMovies } from "../../api/moviesApi";
-import type { MoviesResponse, Movie } from "../../types/movie";
-import MovieGrid from "../MovieGrid/MovieGrid";
+import toast, { Toaster } from "react-hot-toast";
+
 import SearchBar from "../SearchBar/SearchBar";
+import MovieGrid from "../MovieGrid/MovieGrid";
 import Loader from "../Loader/Loader";
 import ErrorMessage from "../ErrorMessage/ErrorMessage";
+import MovieModal from "../MovieModal/MovieModal";
+import { fetchMovies, FetchMoviesResponse } from "../../services/movieService";
+import type { Movie } from "../../types/movie";
+
+import "modern-normalize/modern-normalize.css";
 import css from "./App.module.css";
 
-const App = () => {
-  const [query, setQuery] = useState("spiderman");
+export default function App() {
+  const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
 
-  const { data, isLoading, isError } = useQuery<MoviesResponse, Error>({
+  const {
+    data,
+    isLoading,
+    isError,
+    isSuccess,
+  } = useQuery<FetchMoviesResponse>({
     queryKey: ["movies", query, page],
     queryFn: () => fetchMovies(query, page),
-    placeholderData: (prev) => prev,
+    enabled: !!query, // не виконуємо запит, якщо рядок пошуку порожній
+    keepPreviousData: true,
   });
 
-  const handleSearch = (search: string) => {
-    setPage(1);
-    setQuery(search);
-  };
+  // показуємо toast тільки коли пошук успішний і результатів немає
+  useEffect(() => {
+    if (isSuccess && data && data.results.length === 0) {
+      toast.error("No movies found for your request.");
+    }
+  }, [isSuccess, data]);
 
   return (
-    <div className={css.container}>
-      <h1 className={css.title}>Movie Search</h1>
-
-      <SearchBar onSearch={handleSearch} />
+    <>
+      <SearchBar
+        onSubmit={(searchQuery) => {
+          setQuery(searchQuery);
+          setPage(1); // при новому пошуку завжди починаємо з першої сторінки
+        }}
+      />
 
       {isLoading && <Loader />}
-      {isError && <ErrorMessage message="Failed to load movies." />}
+      {isError && <ErrorMessage />}
 
-      {data?.results && <MovieGrid movies={data.results as Movie[]} />}
+      {isSuccess && data.results.length > 0 && (
+        <>
+          
+          {data.total_pages > 1 && (
+            <ReactPaginate
+              pageCount={data.total_pages}
+              pageRangeDisplayed={5}
+              marginPagesDisplayed={1}
+              onPageChange={({ selected }) => setPage(selected + 1)}
+              forcePage={page - 1}
+              containerClassName={css.pagination}
+              activeClassName={css.active}
+              nextLabel="→"
+              previousLabel="←"
+            />
+          )}
 
-      {data?.total_pages && data.total_pages > 1 && (
-        <ReactPaginate
-          pageCount={data.total_pages}
-          pageRangeDisplayed={5}
-          marginPagesDisplayed={1}
-          onPageChange={({ selected }) => setPage(selected + 1)}
-          forcePage={page - 1}
-          containerClassName={css.pagination}
-          activeClassName={css.active}
-          nextLabel="→"
-          previousLabel="←"
+          <MovieGrid movies={data.results} onSelect={setSelectedMovie} />
+
+        </>
+      )}
+
+      {selectedMovie && (
+        <MovieModal
+          movie={selectedMovie}
+          onClose={() => setSelectedMovie(null)}
         />
       )}
-    </div>
-  );
-};
 
-export default App;
+      <Toaster position="top-right" />
+    </>
+  );
+}
